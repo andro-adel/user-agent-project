@@ -14,11 +14,31 @@ class UserAgentChat extends Page
 
     public string $input = '', $conversation = '';
 
+    public function mount()
+    {
+        // Load conversation from session or initialize it
+        $this->conversation = session('user_agent_conversation', '');
+    }
+
     public function send()
     {
-        $agent = new UserManagerAgent(config('laragent.providers.default.api_key'));
-        $response = $agent->respond($this->input);
-        $this->conversation .= "👤 $this->input\n🤖 $response\n\n";
+        if (empty($this->input)) {
+            return;
+        }
+
+        $this->conversation .= "👤 " . $this->input . "\n";
+
+        $agent = new UserManagerAgent('user_agent_chat_session');
+        $result = $agent->processMessage(['text' => $this->input]);
+
+        // Convert array/object result to a readable string for the chat
+        $response = is_string($result) ? $result : json_encode($result, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+
+        $this->conversation .= "🤖 " . $response . "\n\n";
+
+        // Save conversation to session
+        session(['user_agent_conversation' => $this->conversation]);
+
         $this->input = '';
     }
 }
